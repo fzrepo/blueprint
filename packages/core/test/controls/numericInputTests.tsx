@@ -153,9 +153,9 @@ describe("<NumericInput>", () => {
 
         it("provides numeric value to onValueChange as a number and a string", () => {
             const onValueChangeSpy = spy();
-            const component = mount(<NumericInput onValueChange={onValueChangeSpy} value={1} />);
+            const component = mount(<NumericInput onValueChange={onValueChangeSpy} />);
 
-            component.find("input").simulate("change");
+            component.setState({ value: "1" });
 
             expect(onValueChangeSpy.calledOnce).to.be.true;
             expect(onValueChangeSpy.calledWith(1, "1")).to.be.true;
@@ -163,9 +163,9 @@ describe("<NumericInput>", () => {
 
         it("provides non-numeric value to onValueChange as NaN and a string", () => {
             const onValueChangeSpy = spy();
-            const component = mount(<NumericInput onValueChange={onValueChangeSpy} value={"non-numeric-value"} />);
+            const component = mount(<NumericInput onValueChange={onValueChangeSpy} />);
 
-            component.find("input").simulate("change");
+            component.setState({ value: "non-numeric-value" });
 
             expect(onValueChangeSpy.calledOnce).to.be.true;
             expect(onValueChangeSpy.calledWith(NaN, "non-numeric-value")).to.be.true;
@@ -714,7 +714,7 @@ describe("<NumericInput>", () => {
                     .simulate("mousedown")
                     .simulate("mousedown");
                 expect(component.state().value).to.equal("2");
-                expect(onValueChangeSpy.callCount).to.equal(5);
+                expect(onValueChangeSpy.callCount).to.equal(1);
                 expect(onValueChangeSpy.args[0]).to.deep.equal([2, "2"]);
             });
         });
@@ -839,6 +839,15 @@ describe("<NumericInput>", () => {
         });
     });
 
+    describe("Controlled mode", () => {
+        it("value prop updates do not trigger onValueChange", () => {
+            const onValueChangeSpy = spy();
+            const component = mount(<NumericInput min={0} value={0} max={1} onValueChange={onValueChangeSpy} />);
+            component.setProps({ value: 1 });
+            expect(onValueChangeSpy.notCalled).to.be.true;
+        });
+    });
+
     describe("Other", () => {
         it("disables the input field and buttons when disabled is true", () => {
             const component = mount(<NumericInput disabled={true} />);
@@ -882,6 +891,16 @@ describe("<NumericInput>", () => {
         it("shows right element if provided", () => {
             const component = mount(<NumericInput rightElement={<Button />} />);
             expect(component.find(InputGroup).find(Button)).to.exist;
+        });
+
+        it("passed decimal value should be rounded by stepSize", () => {
+            const component = mount(<NumericInput value={9.001} min={0} />);
+            expect(component.find("input").prop("value")).to.equal("9");
+        });
+
+        it("passed decimal value should be rounded by minorStepSize", () => {
+            const component = mount(<NumericInput value={"9.01"} min={0} minorStepSize={0.01} />);
+            expect(component.find("input").prop("value")).to.equal("9.01");
         });
 
         it("changes max precision of displayed value to that of the smallest step size defined", () => {

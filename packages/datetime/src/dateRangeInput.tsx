@@ -16,11 +16,11 @@
 
 import classNames from "classnames";
 import * as React from "react";
-import DayPicker from "react-day-picker";
-import { DayPickerProps } from "react-day-picker/types/props";
+import DayPicker, { DayPickerProps } from "react-day-picker";
+import { polyfill } from "react-lifecycles-compat";
 
 import {
-    AbstractPureComponent,
+    AbstractPureComponent2,
     Boundary,
     Classes,
     DISPLAYNAME_PREFIX,
@@ -40,7 +40,8 @@ import { areSameTime, DateRange, isDateValid, isDayInRange } from "./common/date
 import * as Errors from "./common/errors";
 import { getFormattedDateString, IDateFormatProps } from "./dateFormat";
 import { getDefaultMaxDate, getDefaultMinDate, IDatePickerBaseProps } from "./datePickerCore";
-import { DateRangePicker, IDateRangeShortcut } from "./dateRangePicker";
+import { DateRangePicker } from "./dateRangePicker";
+import { IDateRangeShortcut } from "./shortcuts";
 
 export interface IDateRangeInputProps extends IDatePickerBaseProps, IDateFormatProps, IProps {
     /**
@@ -184,6 +185,8 @@ export interface IDateRangeInputState {
 
     shouldSelectAfterUpdate?: boolean;
     wasLastFocusChangeDueToHover?: boolean;
+
+    selectedShortcutIndex?: number;
 }
 
 interface IStateKeysAndValuesObject {
@@ -202,7 +205,8 @@ interface IStateKeysAndValuesObject {
     };
 }
 
-export class DateRangeInput extends AbstractPureComponent<IDateRangeInputProps, IDateRangeInputState> {
+@polyfill
+export class DateRangeInput extends AbstractPureComponent2<IDateRangeInputProps, IDateRangeInputState> {
     public static defaultProps: Partial<IDateRangeInputProps> = {
         allowSingleDayRange: false,
         closeOnSelection: true,
@@ -252,11 +256,13 @@ export class DateRangeInput extends AbstractPureComponent<IDateRangeInputProps, 
             formattedMinDateString: this.getFormattedMinMaxDateString(props, "minDate"),
             isOpen: false,
             selectedEnd,
+            selectedShortcutIndex: -1,
             selectedStart,
         };
     }
 
-    public componentDidUpdate() {
+    public componentDidUpdate(prevProps: IDateRangeInputProps, prevState: IDateRangeInputState, snapshot?: {}) {
+        super.componentDidUpdate(prevProps, prevState, snapshot);
         const { isStartInputFocused, isEndInputFocused, shouldSelectAfterUpdate } = this.state;
 
         const shouldFocusStartInput = this.shouldFocusInputRef(isStartInputFocused, this.startInputRef);
@@ -273,16 +279,38 @@ export class DateRangeInput extends AbstractPureComponent<IDateRangeInputProps, 
         } else if (isEndInputFocused && shouldSelectAfterUpdate) {
             this.endInputRef.select();
         }
+
+        let nextState: IDateRangeInputState = {};
+
+        if (this.props.value !== prevProps.value) {
+            const [selectedStart, selectedEnd] = this.getInitialRange(this.props);
+            nextState = { ...nextState, selectedStart, selectedEnd };
+        }
+
+        // cache the formatted date strings to avoid computing on each render.
+        if (this.props.minDate !== prevProps.minDate) {
+            const formattedMinDateString = this.getFormattedMinMaxDateString(this.props, "minDate");
+            nextState = { ...nextState, formattedMinDateString };
+        }
+        if (this.props.maxDate !== prevProps.maxDate) {
+            const formattedMaxDateString = this.getFormattedMinMaxDateString(this.props, "maxDate");
+            nextState = { ...nextState, formattedMaxDateString };
+        }
+
+        this.setState(nextState);
     }
 
     public render() {
+        const { selectedShortcutIndex } = this.state;
         const { popoverProps = {} } = this.props;
 
         const popoverContent = (
             <DateRangePicker
                 {...this.props}
+                selectedShortcutIndex={selectedShortcutIndex}
                 boundaryToModify={this.state.boundaryToModify}
                 onChange={this.handleDateRangePickerChange}
+                onShortcutChange={this.handleShortcutChange}
                 onHoverChange={this.handleDateRangePickerHoverChange}
                 value={this.getSelectedRange()}
             />
@@ -309,29 +337,6 @@ export class DateRangeInput extends AbstractPureComponent<IDateRangeInputProps, 
                 </div>
             </Popover>
         );
-    }
-
-    public componentWillReceiveProps(nextProps: IDateRangeInputProps) {
-        super.componentWillReceiveProps(nextProps);
-
-        let nextState: IDateRangeInputState = {};
-
-        if (nextProps.value !== this.props.value) {
-            const [selectedStart, selectedEnd] = this.getInitialRange(nextProps);
-            nextState = { ...nextState, selectedStart, selectedEnd };
-        }
-
-        // cache the formatted date strings to avoid computing on each render.
-        if (nextProps.minDate !== this.props.minDate) {
-            const formattedMinDateString = this.getFormattedMinMaxDateString(nextProps, "minDate");
-            nextState = { ...nextState, formattedMinDateString };
-        }
-        if (nextProps.maxDate !== this.props.maxDate) {
-            const formattedMaxDateString = this.getFormattedMinMaxDateString(nextProps, "maxDate");
-            nextState = { ...nextState, formattedMaxDateString };
-        }
-
-        this.setState(nextState);
     }
 
     protected validateProps(props: IDateRangeInputProps) {
@@ -461,6 +466,10 @@ export class DateRangeInput extends AbstractPureComponent<IDateRangeInputProps, 
         }
 
         Utils.safeInvoke(this.props.onChange, selectedRange);
+    };
+
+    private handleShortcutChange = (_: IDateRangeShortcut, selectedShortcutIndex: number) => {
+        this.setState({ selectedShortcutIndex });
     };
 
     private handleDateRangePickerHoverChange = (
@@ -963,7 +972,7 @@ export class DateRangeInput extends AbstractPureComponent<IDateRangeInputProps, 
     }
 
     // this is a slightly kludgy function, but it saves us a good amount of repeated code between
-    // the constructor and componentWillReceiveProps.
+    // the constructor and componentDidUpdate.
     private getFormattedMinMaxDateString(props: IDateRangeInputProps, propName: "minDate" | "maxDate") {
         const date = props[propName];
         const defaultDate = DateRangeInput.defaultProps[propName];

@@ -39,7 +39,6 @@ These are the component libraries we publish to NPM.
 - [![npm](https://img.shields.io/npm/v/@blueprintjs/select.svg?label=@blueprintjs/select)](https://www.npmjs.com/package/@blueprintjs/select) &ndash; Components for selecting items from a list.
 - [![npm](https://img.shields.io/npm/v/@blueprintjs/table.svg?label=@blueprintjs/table)](https://www.npmjs.com/package/@blueprintjs/table) &ndash; Scalable interactive table component.
 - [![npm](https://img.shields.io/npm/v/@blueprintjs/timezone.svg?label=@blueprintjs/timezone)](https://www.npmjs.com/package/@blueprintjs/timezone) &ndash; Components for picking timezones.
-- [![npm](https://img.shields.io/npm/v/@blueprintjs/labs.svg?label=@blueprintjs/labs)](https://www.npmjs.com/package/@blueprintjs/labs) &ndash; Incubator and staging area for new components still under initial development.
 
 ### Applications
 
@@ -71,10 +70,10 @@ then [check out the "help wanted" label](https://github.com/palantir/blueprint/l
 
 ## Development
 
-[Lerna](https://lernajs.io/) manages inter-package dependencies in this monorepo.
+[Lerna](https://lerna.js.org/) manages inter-package dependencies in this monorepo.
 Builds are orchestrated via `lerna run` and NPM scripts.
 
-__Prerequisites__: Node.js v8+, Yarn v1.10+
+__Prerequisites__: Node.js v10+, Yarn v1.18+
 
 ### One-time setup
 
